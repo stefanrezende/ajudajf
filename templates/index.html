@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ajuda JF — Pontos de Arrecadação</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#E63946;--red-d:#c1121f;--orange:#F4821F;
+  --dark:#0d1117;--dark2:#161b22;--dark3:#21262d;
+  --border:rgba(255,255,255,0.08);
+  --white:#f0f6fc;--gray:#8b949e;
+  --green:#3fb950;--radius:10px;
+  --t:all .2s ease;
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--white);font-size:15px}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:inherit}
+
+/* ── HEADER ── */
+header{
+  background:var(--dark2);border-bottom:2px solid var(--red);
+  position:sticky;top:0;z-index:1000;
+}
+.hinner{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1.2rem}
+.logo{display:flex;align-items:center;gap:.7rem}
+.logo-emoji{font-size:1.8rem}
+.logo-title{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;letter-spacing:2px}
+.logo-sub{font-size:.68rem;color:var(--gray);letter-spacing:1px;text-transform:uppercase}
+.nav-btns{display:flex;gap:.6rem}
+.btn-nav{background:transparent;border:1px solid var(--border);color:var(--gray);padding:.4rem .9rem;border-radius:6px;font-size:.82rem;transition:var(--t)}
+.btn-nav:hover{border-color:var(--white);color:var(--white)}
+.btn-nav.active{background:rgba(230,57,70,.15);border-color:var(--red);color:var(--red)}
+.banner{background:var(--red);text-align:center;padding:.35rem 1rem;font-size:.78rem;font-weight:500;letter-spacing:.4px}
+.banner b{font-weight:700}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:calc(100vh - 72px)}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:320px;min-width:280px;background:var(--dark2);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.sb-head{padding:1rem 1rem .6rem;border-bottom:1px solid var(--border)}
+.sb-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+.badge{background:var(--red);color:#fff;font-size:.7rem;font-weight:700;padding:.15rem .5rem;border-radius:20px}
+.sb-hint{font-size:.76rem;color:var(--gray);margin-top:.4rem}
+.sb-list{flex:1;overflow-y:auto;padding:.7rem;display:flex;flex-direction:column;gap:.5rem}
+.sb-list::-webkit-scrollbar{width:3px}
+.sb-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+.pcard{
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:var(--radius);padding:.8rem;cursor:pointer;transition:var(--t);
+}
+.pcard:hover{background:rgba(255,255,255,.07);border-color:var(--orange);transform:translateX(2px)}
+.pcard.sel{background:rgba(230,57,70,.08);border-color:var(--red)}
+.pc-top{display:flex;align-items:flex-start;gap:.5rem;margin-bottom:.4rem}
+.pc-icon{font-size:1.3rem;flex-shrink:0}
+.pc-name{font-size:.88rem;font-weight:600;line-height:1.3}
+.pc-resp{font-size:.72rem;color:var(--orange);margin-top:1px}
+.pc-addr,.pc-hora{font-size:.75rem;color:var(--gray);margin-top:.25rem;line-height:1.4}
+.empty{text-align:center;padding:2rem;color:var(--gray)}
+.empty span{font-size:2rem;display:block;margin-bottom:.5rem}
+
+/* ── MAP ── */
+.map-wrap{flex:1;position:relative}
+#map{width:100%;height:100%}
+
+/* ── POPUP ── */
+.popup-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.95rem;color:#1a1a2e;margin-bottom:5px}
+.popup-row{font-size:.8rem;color:#444;margin-top:3px;line-height:1.4}
+
+/* ── DETAIL OVERLAY ── */
+.detail{
+  position:absolute;bottom:16px;right:16px;width:300px;
+  background:var(--dark);border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.5);
+  z-index:500;animation:slideUp .25s ease;
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.detail-close{
+  position:absolute;top:.6rem;right:.6rem;
+  background:rgba(255,255,255,.1);border:none;color:#ccc;
+  width:24px;height:24px;border-radius:50%;font-size:.75rem;
+  display:flex;align-items:center;justify-content:center;transition:var(--t);
+}
+.detail-close:hover{background:var(--red);color:#fff}
+.detail-hd{display:flex;align-items:center;gap:.6rem;padding:.9rem 1rem .6rem;border-bottom:1px solid var(--border)}
+.detail-hd h3{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700;padding-right:1.2rem;line-height:1.3}
+.detail-body{padding:.7rem 1rem 1rem;display:flex;flex-direction:column;gap:.5rem}
+.drow{display:flex;flex-direction:column;gap:1px}
+.dlabel{font-size:.68rem;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.dval{font-size:.82rem;color:#ccc;line-height:1.4}
+
+/* ── MODAL LOGIN / ADMIN ── */
+.overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);
+  display:flex;align-items:center;justify-content:center;
+  z-index:2000;backdrop-filter:blur(4px);
+  opacity:0;pointer-events:none;transition:opacity .25s ease;
+}
+.overlay.show{opacity:1;pointer-events:all}
+.modal{
+  background:var(--dark2);border:1px solid rgba(255,255,255,.1);
+  border-radius:16px;padding:2rem;width:100%;max-width:440px;
+  box-shadow:0 8px 60px rgba(0,0,0,.6);animation:slideUp .3s ease;
+}
+.modal h2{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700;margin-bottom:.3rem}
+.modal-sub{color:var(--gray);font-size:.82rem;margin-bottom:1.4rem}
+.modal-icon{font-size:2.5rem;display:block;margin-bottom:.8rem;text-align:center}
+
+/* ── ADMIN PANEL ── */
+.admin-wrap{width:100%;padding:1.2rem;overflow-y:auto;height:calc(100vh - 72px)}
+.admin-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.2rem;gap:1rem;flex-wrap:wrap}
+.admin-title{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800}
+.admin-sub{color:var(--gray);font-size:.8rem;margin-top:.2rem}
+.stats{display:flex;gap:.6rem;align-items:center}
+.stat{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:.4rem .8rem;text-align:center;min-width:60px}
+.stat-n{display:block;font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--orange)}
+.stat-l{display:block;font-size:.65rem;color:var(--gray);text-transform:uppercase;letter-spacing:.5px}
+.admin-body{display:grid;grid-template-columns:380px 1fr;gap:1.2rem;align-items:start}
+@media(max-width:860px){.admin-body{grid-template-columns:1fr}.sidebar{display:none}}
+.panel{background:var(--dark2);border:1px solid var(--border);border-radius:var(--radius);padding:1.2rem}
+.panel-title{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;margin-bottom:1rem;padding-bottom:.7rem;border-bottom:1px solid var(--border)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 .8rem}
+.fg{display:flex;flex-direction:column;gap:.3rem;margin-bottom:.8rem}
+.fg.full{grid-column:1/-1}
+.fg label{font-size:.72rem;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.5px}
+.fi{
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:7px;padding:.6rem .85rem;color:var(--white);
+  font-family:'DM Sans',sans-serif;font-size:.88rem;width:100%;transition:var(--t);
+}
+.fi:focus{outline:none;border-color:var(--orange);background:rgba(255,255,255,.08)}
+textarea.fi{min-height:70px;resize:vertical}
+.tip{background:rgba(244,130,31,.07);border:1px solid rgba(244,130,31,.2);border-radius:7px;padding:.6rem .8rem;font-size:.75rem;color:#bbb;margin-bottom:.9rem;line-height:1.5}
+
+/* ── ADMIN LIST ── */
+.al{display:flex;flex-direction:column;gap:.7rem;max-height:520px;overflow-y:auto}
+.al::-webkit-scrollbar{width:3px}
+.al::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px}
+.acard{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--radius);padding:.9rem;display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;transition:var(--t)}
+.acard:hover{background:rgba(255,255,255,.06)}
+.acard.off{opacity:.45}
+.ac-info{flex:1}
+.ac-top{display:flex;align-items:center;gap:.45rem;margin-bottom:.3rem}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot.on{background:var(--green);box-shadow:0 0 5px var(--green)}
+.dot.off{background:var(--gray)}
+.ac-name{font-size:.85rem;font-weight:600}
+.ac-end,.ac-coord{font-size:.74rem;color:var(--gray);margin-top:.2rem}
+.ac-btns{display:flex;flex-direction:column;gap:.35rem;flex-shrink:0}
+
+/* ── BUTTONS ── */
+.btn{border:none;border-radius:7px;padding:.5rem 1rem;font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;letter-spacing:.3px;transition:var(--t)}
+.btn-red{background:var(--red);color:#fff}
+.btn-red:hover{background:var(--red-d);transform:translateY(-1px);box-shadow:0 4px 14px rgba(230,57,70,.4)}
+.btn-full{width:100%;padding:.7rem;font-size:.9rem}
+.btn-sm{padding:.35rem .7rem;font-size:.73rem;font-weight:600;border-radius:6px;border:1px solid;background:transparent;transition:var(--t)}
+.btn-toggle-on{color:var(--orange);border-color:var(--orange)}
+.btn-toggle-on:hover{background:var(--orange);color:#fff}
+.btn-toggle-off{color:var(--green);border-color:var(--green)}
+.btn-toggle-off:hover{background:var(--green);color:#fff}
+.btn-del{color:var(--red);border-color:var(--red)}
+.btn-del:hover{background:var(--red);color:#fff}
+.btn-edit{color:#58a6ff;border-color:#58a6ff}
+.btn-edit:hover{background:#58a6ff;color:#000}
+.btn-ghost{background:rgba(255,255,255,.08);color:var(--gray);border:1px solid var(--border);border-radius:7px;padding:.4rem 1rem;font-size:.8rem;transition:var(--t)}
+.btn-ghost:hover{background:rgba(255,255,255,.15);color:var(--white)}
+
+/* ── ALERTS ── */
+.alert{padding:.6rem .9rem;border-radius:7px;font-size:.8rem;margin-bottom:.8rem;display:none}
+.alert.show{display:block}
+.alert-ok{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:#7ee787}
+.alert-err{background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.35);color:#ff8080}
+
+/* ── MARKER ── */
+.pin{width:36px;height:36px;background:var(--red);border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(230,57,70,.55)}
+.pin span{transform:rotate(45deg);font-size:.95rem}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hinner">
+    <div class="logo">
+      <span class="logo-emoji">🆘</span>
+      <div>
+        <span class="logo-title">AJUDA JF</span>
+        <span class="logo-sub" style="display:block">Pontos de Arrecadação · Emergência</span>
+      </div>
+    </div>
+    <div class="nav-btns">
+      <button class="btn-nav active" id="btnMapa" onclick="showMapa()">🗺 Mapa</button>
+      <button class="btn-nav" id="btnAdmin" onclick="showAdmin()">⚙ Admin</button>
+    </div>
+  </div>
+  <div class="banner">⚠️ EMERGÊNCIA — Chuvas e deslizamentos em Juiz de Fora &nbsp;·&nbsp; Defesa Civil: <b>199</b> &nbsp;·&nbsp; SAMU: <b>192</b></div>
+</header>
+
+<!-- MAPA VIEW -->
+<div class="app" id="viewMapa">
+  <div class="sidebar">
+    <div class="sb-head">
+      <div class="sb-title">Pontos Ativos <span class="badge" id="contagem">0</span></div>
+      <div class="sb-hint">Clique num ponto para ver detalhes.</div>
+    </div>
+    <div class="sb-list" id="listaSidebar"></div>
+  </div>
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="detail" id="detalhe" style="display:none">
+      <button class="detail-close" onclick="fecharDetalhe()">✕</button>
+      <div class="detail-hd">
+        <span style="font-size:1.4rem">📦</span>
+        <h3 id="d-nome"></h3>
+      </div>
+      <div class="detail-body" id="d-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN VIEW -->
+<div id="viewAdmin" style="display:none">
+  <div class="admin-wrap">
+    <div class="admin-hd">
+      <div>
+        <div class="admin-title">⚙ Painel Administrativo</div>
+        <div class="admin-sub">Gerencie os pontos de arrecadação em Juiz de Fora</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="stat-n" id="stAtivos">—</span><span class="stat-l">Ativos</span></div>
+        <div class="stat"><span class="stat-n" id="stTotal">—</span><span class="stat-l">Total</span></div>
+        <button class="btn-ghost" onclick="logout()">Sair</button>
+      </div>
+    </div>
+    <div class="admin-body">
+      <!-- form -->
+      <div class="panel">
+        <div class="panel-title">➕ Adicionar Novo Ponto</div>
+        <div class="fgrid">
+          <div class="fg full"><label>Nome do Local *</label><input class="fi" id="fNome" placeholder="Ex: Ginásio da UFJF"/></div>
+          <div class="fg full"><label>Endereço *</label><input class="fi" id="fEndereco" placeholder="Rua, número - Bairro, Juiz de Fora - MG"/></div>
+          <div class="fg"><label>Latitude *</label><input class="fi" id="fLat" type="number" step="0.0001" placeholder="-21.7622"/></div>
+          <div class="fg"><label>Longitude *</label><input class="fi" id="fLon" type="number" step="0.0001" placeholder="-43.3496"/></div>
+          <div class="fg"><label>Responsável</label><input class="fi" id="fResp" placeholder="Nome ou organização"/></div>
+          <div class="fg"><label>Telefone</label><input class="fi" id="fTel" placeholder="(32) 9999-9999"/></div>
+          <div class="fg full"><label>Horário de Funcionamento</label><input class="fi" id="fHora" placeholder="Seg a Dom: 08h às 20h"/></div>
+          <div class="fg full"><label>Itens Aceitos</label><textarea class="fi" id="fItens" placeholder="Roupas, alimentos, água, cobertores..."></textarea></div>
+        </div>
+        <div class="tip">💡 <b>Dica:</b> No Google Maps, clique com botão direito no local → as coordenadas aparecem no topo do menu. O 1º número é a Latitude, o 2º é a Longitude.</div>
+        <div class="alert alert-ok" id="aOk"></div>
+        <div class="alert alert-err" id="aErr"></div>
+        <button class="btn btn-red btn-full" onclick="adicionarPonto()">➕ Adicionar Ponto</button>
+      </div>
+      <!-- lista -->
+      <div class="panel">
+        <div class="panel-title">📋 Pontos Cadastrados</div>
+        <div class="al" id="adminLista"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL EDIÇÃO -->
+<div class="overlay" id="modalEditar">
+  <div class="modal" style="max-width:520px">
+    <h2 style="margin-bottom:.3rem">✏ Editar Ponto</h2>
+    <div class="modal-sub" style="margin-bottom:1.2rem">Altere os campos e salve.</div>
+    <input type="hidden" id="ePid"/>
+    <div class="fgrid">
+      <div class="fg full"><label>Nome *</label><input class="fi" id="eNome"/></div>
+      <div class="fg full"><label>Endereço *</label><input class="fi" id="eEndereco"/></div>
+      <div class="fg"><label>Latitude *</label><input class="fi" id="eLat" type="number" step="0.0001"/></div>
+      <div class="fg"><label>Longitude *</label><input class="fi" id="eLon" type="number" step="0.0001"/></div>
+      <div class="fg"><label>Responsável</label><input class="fi" id="eResp"/></div>
+      <div class="fg"><label>Telefone</label><input class="fi" id="eTel"/></div>
+      <div class="fg full"><label>Horário</label><input class="fi" id="eHora"/></div>
+      <div class="fg full"><label>Itens Aceitos</label><textarea class="fi" id="eItens" style="min-height:60px"></textarea></div>
+    </div>
+    <div class="alert alert-err" id="eErr"></div>
+    <div style="display:flex;gap:.6rem;margin-top:.4rem">
+      <button class="btn btn-red" style="flex:1" onclick="salvarEdicao()">💾 Salvar</button>
+      <button class="btn-ghost" onclick="fecharModalEditar()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LOGIN -->
+<div class="overlay" id="modalLogin">
+  <div class="modal">
+    <span class="modal-icon">🔐</span>
+    <h2 style="text-align:center">Área Administrativa</h2>
+    <div class="modal-sub" style="text-align:center">Insira a senha para continuar.</div>
+    <div class="alert alert-err" id="loginErr">Senha incorreta. Tente novamente.</div>
+    <div class="fg"><label>Senha</label><input class="fi" id="senhaInput" type="password" placeholder="••••••••••" onkeydown="if(event.key==='Enter')fazerLogin()"/></div>
+    <button class="btn btn-red btn-full" style="margin-top:.4rem" onclick="fazerLogin()">Entrar</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ── state ──────────────────────────────────────────────────────────────────────
+let mapa, marcadores = {}, pontoSel = null, isAdmin = false, todosPontos = [];
+
+// ── init ───────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  initMapa();
+  await carregarPontos();
+  const me = await fetch('/api/me').then(r=>r.json());
+  isAdmin = me.admin;
+});
+
+function initMapa() {
+  mapa = L.map('map').setView([-21.7622, -43.3496], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19
+  }).addTo(mapa);
+}
+
+// ── pontos ─────────────────────────────────────────────────────────────────────
+async function carregarPontos() {
+  const data = await fetch('/api/pontos').then(r=>r.json());
+  renderSidebar(data);
+  renderMarcadores(data);
+  document.getElementById('contagem').textContent = data.length;
+}
+
+function renderSidebar(pontos) {
+  const el = document.getElementById('listaSidebar');
+  if (!pontos.length) { el.innerHTML = '<div class="empty"><span>🔍</span><p>Nenhum ponto ativo.</p></div>'; return; }
+  el.innerHTML = pontos.map(p => `
+    <div class="pcard" id="sc-${p.id}" onclick="selecionarPonto('${p.id}')">
+      <div class="pc-top">
+        <span class="pc-icon">📦</span>
+        <div>
+          <div class="pc-name">${esc(p.nome)}</div>
+          ${p.responsavel ? `<div class="pc-resp">${esc(p.responsavel)}</div>` : ''}
+        </div>
+      </div>
+      <div class="pc-addr">📍 ${esc(p.endereco)}</div>
+      ${p.horario ? `<div class="pc-hora">🕐 ${esc(p.horario)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderMarcadores(pontos) {
+  Object.values(marcadores).forEach(m => mapa.removeLayer(m));
+  marcadores = {};
+  pontos.forEach(p => {
+    const icon = L.divIcon({
+      className: '', html: `<div class="pin"><span>📦</span></div>`,
+      iconSize:[36,36], iconAnchor:[18,36], popupAnchor:[0,-40]
+    });
+    const m = L.marker([p.latitude, p.longitude], {icon})
+      .bindPopup(`<div class="popup-title">${esc(p.nome)}</div>
+        <div class="popup-row">📍 ${esc(p.endereco)}</div>
+        ${p.horario ? `<div class="popup-row">🕐 ${esc(p.horario)}</div>` : ''}`)
+      .addTo(mapa)
+      .on('click', () => selecionarPonto(p.id));
+    marcadores[p.id] = m;
+  });
+}
+
+function selecionarPonto(id) {
+  const pontos = JSON.parse(document.getElementById('listaSidebar').dataset.pontos || '[]');
+  // busca nos marcadores pelo id
+  const el = document.querySelector(`#sc-${id}`);
+  document.querySelectorAll('.pcard').forEach(c => c.classList.remove('sel'));
+  if (el) el.classList.add('sel');
+
+  // busca nos dados carregados
+  fetch('/api/pontos').then(r=>r.json()).then(data => {
+    const p = data.find(x => x.id === id);
+    if (!p) return;
+    mapa.flyTo([p.latitude, p.longitude], 16, {animate:true, duration:.9});
+    mostrarDetalhe(p);
+  });
+}
+
+function mostrarDetalhe(p) {
+  document.getElementById('d-nome').textContent = p.nome;
+  const rows = [
+    ['📍 Endereço', p.endereco],
+    p.responsavel && ['👤 Responsável', p.responsavel],
+    p.telefone    && ['📞 Telefone', p.telefone],
+    p.horario     && ['🕐 Horário', p.horario],
+    p.itens       && ['✅ Itens aceitos', p.itens],
+  ].filter(Boolean);
+  document.getElementById('d-body').innerHTML = rows.map(([l,v]) =>
+    `<div class="drow"><span class="dlabel">${l}</span><span class="dval">${esc(v)}</span></div>`
+  ).join('');
+  document.getElementById('detalhe').style.display = '';
+}
+
+function fecharDetalhe() {
+  document.getElementById('detalhe').style.display = 'none';
+}
+
+// ── views ──────────────────────────────────────────────────────────────────────
+function showMapa() {
+  document.getElementById('viewMapa').style.display = 'flex';
+  document.getElementById('viewAdmin').style.display = 'none';
+  document.getElementById('btnMapa').classList.add('active');
+  document.getElementById('btnAdmin').classList.remove('active');
+  setTimeout(() => mapa.invalidateSize(), 50);
+}
+
+function showAdmin() {
+  document.getElementById('btnAdmin').classList.add('active');
+  document.getElementById('btnMapa').classList.remove('active');
+  if (!isAdmin) {
+    document.getElementById('modalLogin').classList.add('show');
+    setTimeout(() => document.getElementById('senhaInput').focus(), 200);
+    return;
+  }
+  abrirPainelAdmin();
+}
+
+function abrirPainelAdmin() {
+  document.getElementById('viewMapa').style.display = 'none';
+  document.getElementById('viewAdmin').style.display = 'block';
+  carregarAdmin();
+}
+
+// ── login ──────────────────────────────────────────────────────────────────────
+async function fazerLogin() {
+  const senha = document.getElementById('senhaInput').value;
+  const r = await fetch('/api/login', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({senha})
+  });
+  if (r.ok) {
+    isAdmin = true;
+    document.getElementById('modalLogin').classList.remove('show');
+    document.getElementById('senhaInput').value = '';
+    document.getElementById('loginErr').style.display = 'none';
+    abrirPainelAdmin();
+  } else {
+    document.getElementById('loginErr').style.display = 'block';
+    document.getElementById('senhaInput').value = '';
+  }
+}
+
+async function logout() {
+  await fetch('/api/logout', {method:'POST'});
+  isAdmin = false;
+  showMapa();
+}
+
+// ── admin CRUD ─────────────────────────────────────────────────────────────────
+async function carregarAdmin() {
+  const data = await fetch('/api/admin/pontos').then(r=>r.json());
+  todosPontos = data;
+  const ativos = data.filter(p=>p.ativo).length;
+  document.getElementById('stAtivos').textContent = ativos;
+  document.getElementById('stTotal').textContent = data.length;
+
+  const el = document.getElementById('adminLista');
+  if (!data.length) { el.innerHTML = '<div class="empty"><span>📭</span><p>Nenhum ponto ainda.</p></div>'; return; }
+  el.innerHTML = data.map(p => `
+    <div class="acard ${p.ativo ? '' : 'off'}" id="ac-${p.id}">
+      <div class="ac-info">
+        <div class="ac-top">
+          <span class="dot ${p.ativo ? 'on' : 'off'}"></span>
+          <span class="ac-name">${esc(p.nome)}</span>
+        </div>
+        <div class="ac-end">📍 ${esc(p.endereco)}</div>
+        <div class="ac-coord">🗺 ${p.latitude.toFixed(4)}, ${p.longitude.toFixed(4)}</div>
+      </div>
+      <div class="ac-btns">
+        <button class="btn-sm btn-edit" onclick="abrirEdicao('${p.id}')">✏ Editar</button>
+        <button class="btn-sm ${p.ativo ? 'btn-toggle-on' : 'btn-toggle-off'}"
+          onclick="togglePonto('${p.id}')">${p.ativo ? '⏸ Desativar' : '▶ Ativar'}</button>
+        <button class="btn-sm btn-del" onclick="deletarPonto('${p.id}')">🗑 Remover</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function adicionarPonto() {
+  const nome = document.getElementById('fNome').value.trim();
+  const end  = document.getElementById('fEndereco').value.trim();
+  const lat  = parseFloat(document.getElementById('fLat').value);
+  const lon  = parseFloat(document.getElementById('fLon').value);
+
+  hideAlerts();
+  if (!nome) return showErr('O nome do local é obrigatório.');
+  if (!end)  return showErr('O endereço é obrigatório.');
+  if (isNaN(lat) || isNaN(lon)) return showErr('Coordenadas inválidas.');
+
+  const r = await fetch('/api/admin/pontos', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      nome, endereco:end, latitude:lat, longitude:lon,
+      responsavel: document.getElementById('fResp').value.trim(),
+      telefone:    document.getElementById('fTel').value.trim(),
+      horario:     document.getElementById('fHora').value.trim(),
+      itens:       document.getElementById('fItens').value.trim(),
+    })
+  });
+  if (r.ok) {
+    showOk(`Ponto "${nome}" adicionado com sucesso!`);
+    ['fNome','fEndereco','fLat','fLon','fResp','fTel','fHora','fItens'].forEach(id => {
+      const el = document.getElementById(id);
+      el.value = '';
+    });
+    carregarAdmin();
+    carregarPontos();
+  } else {
+    const e = await r.json();
+    showErr(e.error || 'Erro ao adicionar ponto.');
+  }
+}
+
+async function togglePonto(id) {
+  await fetch(`/api/admin/pontos/${id}/toggle`, {method:'POST'});
+  carregarAdmin();
+  carregarPontos();
+}
+
+async function deletarPonto(id) {
+  if (!confirm('Remover este ponto permanentemente?')) return;
+  await fetch(`/api/admin/pontos/${id}`, {method:'DELETE'});
+  carregarAdmin();
+  carregarPontos();
+}
+
+
+function abrirEdicao(id) {
+  const p = todosPontos.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('ePid').value = p.id;
+  document.getElementById('eNome').value = p.nome;
+  document.getElementById('eEndereco').value = p.endereco;
+  document.getElementById('eLat').value = p.latitude;
+  document.getElementById('eLon').value = p.longitude;
+  document.getElementById('eResp').value = p.responsavel || '';
+  document.getElementById('eTel').value = p.telefone || '';
+  document.getElementById('eHora').value = p.horario || '';
+  document.getElementById('eItens').value = p.itens || '';
+  document.getElementById('eErr').style.display = 'none';
+  document.getElementById('modalEditar').classList.add('show');
+}
+
+function fecharModalEditar() {
+  document.getElementById('modalEditar').classList.remove('show');
+}
+
+async function salvarEdicao() {
+  const pid = document.getElementById('ePid').value;
+  const nome = document.getElementById('eNome').value.trim();
+  const endereco = document.getElementById('eEndereco').value.trim();
+  const lat = parseFloat(document.getElementById('eLat').value);
+  const lon = parseFloat(document.getElementById('eLon').value);
+  const errEl = document.getElementById('eErr');
+  errEl.style.display = 'none';
+
+  if (!nome) { errEl.textContent = '❌ Nome obrigatório.'; errEl.style.display = 'block'; return; }
+  if (!endereco) { errEl.textContent = '❌ Endereço obrigatório.'; errEl.style.display = 'block'; return; }
+  if (isNaN(lat) || isNaN(lon)) { errEl.textContent = '❌ Coordenadas inválidas.'; errEl.style.display = 'block'; return; }
+
+  const r = await fetch(`/api/admin/pontos/${pid}`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      nome, endereco, latitude: lat, longitude: lon,
+      responsavel: document.getElementById('eResp').value.trim(),
+      telefone:    document.getElementById('eTel').value.trim(),
+      horario:     document.getElementById('eHora').value.trim(),
+      itens:       document.getElementById('eItens').value.trim(),
+    })
+  });
+  if (r.ok) {
+    fecharModalEditar();
+    carregarAdmin();
+    carregarPontos();
+  } else {
+    const e = await r.json();
+    errEl.textContent = '❌ ' + (e.error || 'Erro ao salvar.');
+    errEl.style.display = 'block';
+  }
+}
+
+// ── helpers ────────────────────────────────────────────────────────────────────
+function esc(s){ const d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+function showOk(msg){ const el=document.getElementById('aOk'); el.textContent='✅ '+msg; el.classList.add('show'); }
+function showErr(msg){ const el=document.getElementById('aErr'); el.textContent='❌ '+msg; el.classList.add('show'); }
+function hideAlerts(){ ['aOk','aErr'].forEach(id=>{ const e=document.getElementById(id); e.classList.remove('show'); }); }
+</script>
+</body>
+</html>
